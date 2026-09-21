@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SPACE DEFENDER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080b18;color:#fff;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden}
+#game{position:relative;width:420px;height:700px;background:linear-gradient(#080b20,#111b3d);overflow:hidden;border:3px solid #5ee7ff;border-radius:18px;box-shadow:0 0 35px #1686aa}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:.8}
+#hud{position:absolute;top:14px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:10;font-weight:bold}
+#player{position:absolute;bottom:35px;left:185px;width:50px;height:60px;background:#5ee7ff;clip-path:polygon(50% 0,100% 100%,50% 78%,0 100%);filter:drop-shadow(0 0 10px #5ee7ff);z-index:5}
+.bullet{position:absolute;width:5px;height:18px;background:#fff36b;border-radius:5px;box-shadow:0 0 10px #fff36b}
+.enemy{position:absolute;width:42px;height:42px;background:#ff477e;border-radius:50%;box-shadow:0 0 15px #ff477e;z-index:4}
+.enemy:after{content:"";position:absolute;width:16px;height:16px;left:13px;top:13px;background:#35102b;border-radius:50%}
+.enemyBullet{position:absolute;width:6px;height:15px;background:#ff704d;border-radius:5px;box-shadow:0 0 8px #ff704d}
+#start,#gameover{position:absolute;inset:0;background:rgba(3,5,15,.9);z-index:20;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:25px}
+#gameover{display:none}
+h1{font-size:48px;color:#5ee7ff;text-shadow:0 0 15px #1686aa;margin-bottom:15px}
+p{color:#c9d2e8;line-height:1.6;margin-bottom:20px}
+button{border:0;background:#5ee7ff;color:#06101b;padding:13px 28px;border-radius:9px;font-size:17px;font-weight:bold;cursor:pointer}
+button:hover{transform:scale(1.05)}
+#controls{position:fixed;bottom:12px;color:#9aa9c7;font-size:14px}
+@media(max-width:450px){#game{width:95vw;height:90vh}}
+</style>
+</head>
+<body>
+<div id="game">
+<div id="hud"><span>⭐ Điểm: <b id="score">0</b></span><span>❤️ <b id="lives">3</b></span></div>
+<div id="player"></div>
+<div id="start"><h1>SPACE<br>DEFENDER</h1><p>Bảo vệ phi thuyền khỏi đội quân ngoài hành tinh.<br>Di chuyển, bắn và sống sót càng lâu càng tốt!</p><button onclick="startGame()">BẮT ĐẦU</button></div>
+<div id="gameover"><h1>GAME OVER</h1><p>Điểm của bạn: <b id="finalScore">0</b></p><button onclick="startGame()">CHƠI LẠI</button></div>
+</div>
+<div id="controls">← → để di chuyển • SPACE để bắn</div>
+<script>
+const game=document.getElementById("game"),player=document.getElementById("player");
+const scoreEl=document.getElementById("score"),livesEl=document.getElementById("lives");
+const start=document.getElementById("start"),gameover=document.getElementById("gameover"),finalScore=document.getElementById("finalScore");
+let x=185,score=0,lives=3,running=false,keys={},bullets=[],enemies=[],enemyBullets=[],lastShot=0,spawnTimer=0,enemySpeed=1.5,lastTime=0;
+for(let i=0;i<70;i++){let s=document.createElement("div");s.className="star";s.style.left=Math.random()*100+"%";s.style.top=Math.random()*100+"%";s.style.opacity=Math.random();game.appendChild(s)}
+document.addEventListener("keydown",e=>{keys[e.key]=true;if(["ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault()});
+document.addEventListener("keyup",e=>keys[e.key]=false);
+function startGame(){bullets.forEach(b=>b.el.remove());enemies.forEach(e=>e.el.remove());enemyBullets.forEach(b=>b.el.remove());bullets=[];enemies=[];enemyBullets=[];score=0;lives=3;x=185;enemySpeed=1.5;running=true;scoreEl.textContent=0;livesEl.textContent=3;player.style.left=x+"px";start.style.display="none";gameover.style.display="none";lastTime=performance.now();requestAnimationFrame(loop)}
+function shoot(){let now=Date.now();if(now-lastShot<220)return;lastShot=now;let el=document.createElement("div");el.className="bullet";el.style.left=(x+22)+"px";el.style.top=(game.clientHeight-100)+"px";game.appendChild(el);bullets.push({el,x:x+22,y:game.clientHeight-100})}
+function spawnEnemy(){let ex=Math.random()*(game.clientWidth-42);let el=document.createElement("div");el.className="enemy";el.style.left=ex+"px";el.style.top="-50px";game.appendChild(el);enemies.push({el,x:ex,y:-50})}
+function loseLife(){lives--;livesEl.textContent=lives;if(lives<=0){running=false;finalScore.textContent=score;gameover.style.display="flex"}}
+function loop(t){if(!running)return;let dt=Math.min((t-lastTime)/16.67,2);lastTime=t;
+if(keys["ArrowLeft"])x-=6*dt;if(keys["ArrowRight"])x+=6*dt;x=Math.max(0,Math.min(game.clientWidth-50,x));player.style.left=x+"px";if(keys[" "]||keys["Spacebar"])shoot();
+spawnTimer+=dt;if(spawnTimer>55){spawnEnemy();spawnTimer=0}enemySpeed+=0.0007*dt;
+bullets.forEach((b,i)=>{b.y-=9*dt;b.el.style.top=b.y+"px";if(b.y<-30){b.el.remove();bullets.splice(i,1);return}enemies.forEach((e,j)=>{if(!e.el)return;if(b.x<e.x+42&&b.x+5>e.x&&b.y<e.y+42&&b.y+18>e.y){e.el.remove();b.el.remove();enemies.splice(j,1);bullets.splice(i,1);score+=10;scoreEl.textContent=score}})});
+enemies.forEach((e,i)=>{e.y+=enemySpeed*dt;e.el.style.top=e.y+"px";if(e.y>game.clientHeight+10){e.el.remove();enemies.splice(i,1);loseLife();return}if(e.x<x+50&&e.x+42>x&&e.y<game.clientHeight-35&&e.y+42>game.clientHeight-95){e.el.remove();enemies.splice(i,1);loseLife()}if(Math.random()<0.002*dt){let b=document.createElement("div");b.className="enemyBullet";b.style.left=(e.x+18)+"px";b.style.top=(e.y+35)+"px";game.appendChild(b);enemyBullets.push({el:b,x:e.x+18,y:e.y+35})}});
+enemyBullets.forEach((b,i)=>{b.y+=6*dt;b.el.style.top=b.y+"px";if(b.y>game.clientHeight){b.el.remove();enemyBullets.splice(i,1);return}if(b.x<x+50&&b.x+6>x&&b.y<game.clientHeight-35&&b.y+15>game.clientHeight-95){b.el.remove();enemyBullets.splice(i,1);loseLife()}});
+requestAnimationFrame(loop)}
+</script>
+</body>
+</html>
